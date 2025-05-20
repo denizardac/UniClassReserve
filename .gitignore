@@ -13,6 +13,7 @@ obj/
 
 # ASP.NET
 wwwroot/logs/
+appsettings.json
 appsettings.Development.json
 appsettings.Local.json
 appsettings.*.local.json
