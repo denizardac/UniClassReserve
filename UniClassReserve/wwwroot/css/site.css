@@ -1,0 +1,140 @@
+html {
+  font-size: 14px;
+}
+
+@media (min-width: 768px) {
+  html {
+    font-size: 16px;
+  }
+}
+
+.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
+  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+}
+
+html {
+  position: relative;
+  min-height: 100%;
+}
+
+body {
+  margin-bottom: 60px;
+}
+
+/* Gelişmiş Dark Mode Paleti */
+[data-bs-theme="dark"] {
+  --bs-body-bg: #181a1b;
+  --bs-body-color: #f1f3f5;
+  --bs-secondary-bg: #23272b;
+  --bs-secondary-color: #dee2e6;
+  --bs-primary: #4dd0e1;
+  --bs-primary-rgb: 77,208,225;
+  --bs-success: #43a047;
+  --bs-success-rgb: 67,160,71;
+  --bs-danger: #e53935;
+  --bs-danger-rgb: 229,57,53;
+  --bs-warning: #ffc107;
+  --bs-warning-rgb: 255,193,7;
+  --bs-info: #29b6f6;
+  --bs-info-rgb: 41,182,246;
+  --bs-light: #23272b;
+  --bs-dark: #101214;
+  --bs-border-color: #343a40;
+  --bs-link-color: #4dd0e1;
+  --bs-link-hover-color: #00bcd4;
+  --bs-table-bg: #23272b;
+  --bs-table-color: #f1f3f5;
+  --bs-table-border-color: #444;
+  --bs-card-bg: #23272b;
+  --bs-card-color: #f1f3f5;
+  --bs-modal-bg: #23272b;
+  --bs-modal-color: #f1f3f5;
+  --bs-input-bg: #23272b;
+  --bs-input-color: #f1f3f5;
+  --bs-input-border-color: #444;
+  --bs-dropdown-bg: #23272b;
+  --bs-dropdown-color: #f1f3f5;
+  --bs-dropdown-link-hover-bg: #343a40;
+  --bs-dropdown-link-hover-color: #fff;
+  --bs-toast-bg: #23272b;
+  --bs-toast-color: #f1f3f5;
+  --bs-badge-bg: #4dd0e1;
+  --bs-badge-color: #181a1b;
+  --bs-btn-bg: #343a40;
+  --bs-btn-color: #f1f3f5;
+  --bs-btn-border-color: #444;
+  --bs-btn-hover-bg: #4dd0e1;
+  --bs-btn-hover-color: #181a1b;
+  --bs-btn-hover-border-color: #4dd0e1;
+  --bs-navbar-bg: #23272b;
+  --bs-navbar-color: #f1f3f5;
+  --bs-navbar-brand-color: #4dd0e1;
+  --bs-navbar-brand-hover-color: #00bcd4;
+  --bs-navbar-link-color: #f1f3f5;
+  --bs-navbar-link-hover-color: #4dd0e1;
+  --bs-footer-bg: #181a1b;
+  --bs-footer-color: #dee2e6;
+  /* Yumuşak geçişler */
+  transition: background 0.3s, color 0.3s;
+}
+
+[data-bs-theme="dark"] .card,
+[data-bs-theme="dark"] .modal-content,
+[data-bs-theme="dark"] .dropdown-menu,
+[data-bs-theme="dark"] .table,
+[data-bs-theme="dark"] .form-control,
+[data-bs-theme="dark"] .input-group-text {
+  background-color: var(--bs-secondary-bg) !important;
+  color: var(--bs-body-color) !important;
+  border-color: var(--bs-border-color) !important;
+}
+[data-bs-theme="dark"] .form-control,
+[data-bs-theme="dark"] .input-group-text {
+  background-color: var(--bs-input-bg) !important;
+  color: var(--bs-input-color) !important;
+  border-color: var(--bs-input-border-color) !important;
+}
+[data-bs-theme="dark"] .table thead {
+  background-color: #343a40 !important;
+  color: #fff !important;
+}
+[data-bs-theme="dark"] .badge.bg-success {
+  background-color: #43a047 !important;
+  color: #fff !important;
+}
+[data-bs-theme="dark"] .badge.bg-warning {
+  background-color: #ffc107 !important;
+  color: #212529 !important;
+}
+[data-bs-theme="dark"] .badge.bg-danger {
+  background-color: #e53935 !important;
+  color: #fff !important;
+}
+[data-bs-theme="dark"] .badge.bg-secondary {
+  background-color: #adb5bd !important;
+  color: #212529 !important;
+}
+[data-bs-theme="dark"] .toast {
+  background-color: var(--bs-toast-bg) !important;
+  color: var(--bs-toast-color) !important;
+}
+[data-bs-theme="dark"] .navbar, [data-bs-theme="dark"] .footer {
+  background-color: var(--bs-navbar-bg) !important;
+  color: var(--bs-navbar-color) !important;
+}
+[data-bs-theme="dark"] .navbar-brand {
+  color: var(--bs-navbar-brand-color) !important;
+}
+[data-bs-theme="dark"] .navbar-brand:hover {
+  color: var(--bs-navbar-brand-hover-color) !important;
+}
+[data-bs-theme="dark"] .nav-link {
+  color: var(--bs-navbar-link-color) !important;
+}
+[data-bs-theme="dark"] .nav-link:hover {
+  color: var(--bs-navbar-link-hover-color) !important;
+}
+[data-bs-theme="dark"] .footer {
+  background-color: var(--bs-footer-bg) !important;
+  color: var(--bs-footer-color) !important;
+}

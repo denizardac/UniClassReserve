@@ -1,0 +1,663 @@
+@page
+@model UniClassReserve.Pages.InstructorPanelModel
+@using Microsoft.AspNetCore.Authorization
+@using System.Text.Json
+@attribute [Authorize(Roles = "Instructor")]
+
+@{
+    var calendarEvents = Model.MyReservations.Select(r => new {
+        id = r.Id,
+        title = $"{r.Classroom.Name} | {r.StartTime:HH:mm}-{r.EndTime:HH:mm} ({r.Status})",
+        start = r.StartTime.ToString("yyyy-MM-ddTHH:mm:ss"),
+        end = r.EndTime.ToString("yyyy-MM-ddTHH:mm:ss"),
+        color = r.Color // backend'den gelen renk
+    });
+    var calendarEventsJson = JsonSerializer.Serialize(calendarEvents);
+
+    // Tüm rezervasyonları kullanmak için Model'de bir property veya ViewData ile tüm rezervasyonları geçiriyoruz
+    var allReservations = ViewData["AllUserReservations"] as List<UniClassReserve.Data.Reservation> ?? Model.MyReservations.Cast<UniClassReserve.Data.Reservation>().ToList();
+    var feedbackable = allReservations
+        .Where(r => r.Status == "Approved")
+        .GroupBy(r => new { r.ClassroomId, r.TermId })
+        .Select(g => new {
+            Classroom = Model.Classrooms.FirstOrDefault(c => c.Id == g.Key.ClassroomId),
+            Term = Model.Terms.FirstOrDefault(t => t.Id == g.Key.TermId),
+            ClassroomId = g.Key.ClassroomId,
+            TermId = g.Key.TermId,
+            AlreadyLeft = Model.MyFeedbacks.Any(f => f.ClassroomId == g.Key.ClassroomId && f.TermId == g.Key.TermId),
+            Feedback = Model.MyFeedbacks.FirstOrDefault(f => f.ClassroomId == g.Key.ClassroomId && f.TermId == g.Key.TermId)
+        })
+        .ToList();
+}
+
+<h2 class="mb-4"><i class="bi bi-person-badge-fill me-2"></i>Instructor Panel</h2>
+<p class="text-muted"><i class="bi bi-person me-1"></i>Welcome, @User.Identity?.Name!</p>
+
+@if (!string.IsNullOrEmpty(Model.ResultMessage))
+{
+    var toastColor = "text-bg-info";
+    if (Model.ResultMessage.Contains("error", System.StringComparison.OrdinalIgnoreCase) || Model.ResultMessage.Contains("fail", System.StringComparison.OrdinalIgnoreCase) || Model.ResultMessage.Contains("çakışma", System.StringComparison.OrdinalIgnoreCase))
+    {
+        toastColor = "text-bg-danger";
+    }
+    else if (Model.ResultMessage.Contains("warning", System.StringComparison.OrdinalIgnoreCase) || Model.ResultMessage.Contains("tatil", System.StringComparison.OrdinalIgnoreCase))
+    {
+        toastColor = "text-bg-warning";
+    }
+    <div aria-live="polite" aria-atomic="true" class="position-fixed top-0 end-0 p-3" style="z-index: 1080;">
+        <div id="resultToast" class="toast align-items-center @toastColor border-0 show" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                    @Html.Raw(Model.ResultMessage)
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- FullCalendar CDN -->
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/themes/saga.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+<style>
+    #calendar {
+        background: var(--bs-body-bg);
+        color: var(--bs-body-color);
+        border-radius: 12px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        padding: 16px;
+        font-family: 'Segoe UI', 'Arial', sans-serif;
+        transition: background 0.3s, color 0.3s;
+    }
+    .fc-toolbar-title {
+        font-size: 1.7rem;
+        font-weight: 600;
+        color: var(--bs-body-color);
+    }
+    .fc-event-title {
+        font-size: 1rem;
+        font-weight: 500;
+    }
+    .fc-event {
+        border-radius: 8px;
+        border: none;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+    }
+    /* FullCalendar dark mode fix for event backgrounds */
+    [data-bs-theme="dark"] .fc {
+        --fc-page-bg-color: #23272b;
+        --fc-neutral-bg-color: #23272b;
+        --fc-border-color: #444;
+        --fc-button-bg-color: #343a40;
+        --fc-button-border-color: #343a40;
+        --fc-button-hover-bg-color: #495057;
+        --fc-button-active-bg-color: #495057;
+        --fc-event-bg-color: #198754;
+        --fc-event-border-color: #198754;
+        --fc-event-text-color: #fff;
+        --fc-today-bg-color: #343a40;
+        --fc-list-event-hover-bg-color: #495057;
+        color: #fff;
+    }
+    [data-bs-theme="dark"] .fc-event {
+        background-color: #198754 !important;
+        color: #fff !important;
+        border: none !important;
+    }
+    [data-bs-theme="dark"] .fc-event.bg-warning {
+        background-color: #ffc107 !important;
+        color: #212529 !important;
+    }
+    [data-bs-theme="dark"] .fc-event.bg-danger, [data-bs-theme="dark"] .fc-event[style*="#dc3545"] {
+        background-color: #dc3545 !important;
+        color: #fff !important;
+    }
+    [data-bs-theme="dark"] .fc-event.bg-secondary, [data-bs-theme="dark"] .fc-event[style*="#adb5bd"] {
+        background-color: #adb5bd !important;
+        color: #212529 !important;
+    }
+    /* Tablo dark mode desteği */
+    [data-bs-theme="dark"] table.table {
+        background-color: #23272b;
+        color: #fff;
+    }
+    [data-bs-theme="dark"] .table thead {
+        background-color: #343a40;
+        color: #fff;
+    }
+    [data-bs-theme="dark"] .table-bordered td, [data-bs-theme="dark"] .table-bordered th {
+        border-color: #444;
+    }
+    [data-bs-theme="dark"] .badge.bg-success {
+        background-color: #198754 !important;
+        color: #fff !important;
+    }
+    [data-bs-theme="dark"] .badge.bg-warning {
+        background-color: #ffc107 !important;
+        color: #212529 !important;
+    }
+    [data-bs-theme="dark"] .badge.bg-danger {
+        background-color: #dc3545 !important;
+        color: #fff !important;
+    }
+    [data-bs-theme="dark"] .badge.bg-secondary {
+        background-color: #adb5bd !important;
+        color: #212529 !important;
+    }
+</style>
+
+<!-- Takvim Placeholder -->
+<div class="mb-4">
+    <h4>Weekly Calendar</h4>
+    <!-- Legend -->
+    <div class="mb-2">
+        <span class="badge" style="background:#198754;color:#fff">Approved</span>
+        <span class="badge" style="background:#ffc107;color:#212529">Pending</span>
+        <span class="badge" style="background:#8B0000;color:#fff">Rejected</span>
+        <span class="badge" style="background:#dc3545;color:#fff">Conflict</span>
+        <span class="badge" style="background:#adb5bd;color:#212529">Holiday</span>
+    </div>
+    <div id="calendar"></div>
+</div>
+
+<!-- Rezervasyon Ekleme Formu -->
+<h4>Request a Classroom Reservation</h4>
+<form id="addReservationForm" method="post">
+    <div class="row mb-2">
+        <div class="col-md-4">
+            <label class="form-label">Classroom</label>
+            <select class="form-select" name="ClassroomId" required>
+                <option value="">Select...</option>
+                @foreach (var c in Model.Classrooms)
+                {
+                    <option value="@c.Id">@c.Name (@c.Capacity)</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Term</label>
+            <select class="form-select" name="TermId" required>
+                <option value="">Select...</option>
+                @foreach (var t in Model.Terms)
+                {
+                    <option value="@t.Id">@t.Name (@t.StartDate.ToShortDateString() - @t.EndDate.ToShortDateString())</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Day of Week</label>
+            <select class="form-select" name="DayOfWeek" required>
+                <option value="">Select...</option>
+                <option value="1">Monday</option>
+                <option value="2">Tuesday</option>
+                <option value="3">Wednesday</option>
+                <option value="4">Thursday</option>
+                <option value="5">Friday</option>
+                <option value="6">Saturday</option>
+                <option value="7">Sunday</option>
+            </select>
+        </div>
+    </div>
+    <div class="row mb-2">
+        <div class="col-md-3">
+            <label class="form-label">Start Date</label>
+            <input type="date" class="form-control" name="StartDate" required />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">End Date</label>
+            <input type="date" class="form-control" name="EndDate" required />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Start Time</label>
+            <input type="time" class="form-control" name="StartTime" required />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">End Time</label>
+            <input type="time" class="form-control" name="EndTime" required />
+        </div>
+    </div>
+    <button type="button" class="btn btn-primary" id="addReservationSubmitBtn">Request Reservation</button>
+</form>
+
+<!-- Filtreleme ve Sayfalama Alanı -->
+<form method="get" class="row g-2 align-items-end mb-3">
+    <input type="hidden" name="Page" value="1" />
+    <div class="col-auto">
+        <label class="form-label mb-0">Status</label>
+        <select class="form-select" name="StatusFilter">
+            <option value="">All</option>
+            @if (Model.StatusFilter == "Approved") { <option value="Approved" selected>Approved</option> } else { <option value="Approved">Approved</option> }
+            @if (Model.StatusFilter == "Pending") { <option value="Pending" selected>Pending</option> } else { <option value="Pending">Pending</option> }
+            @if (Model.StatusFilter == "Rejected") { <option value="Rejected" selected>Rejected</option> } else { <option value="Rejected">Rejected</option> }
+        </select>
+    </div>
+    <div class="col-auto">
+        <label class="form-label mb-0">Start Date</label>
+        <input type="date" class="form-control" name="StartDateFilter" value="@(Model.StartDateFilter?.ToString("yyyy-MM-dd") ?? "")" />
+    </div>
+    <div class="col-auto">
+        <label class="form-label mb-0">End Date</label>
+        <input type="date" class="form-control" name="EndDateFilter" value="@(Model.EndDateFilter?.ToString("yyyy-MM-dd") ?? "")" />
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-primary">Filter</button>
+    </div>
+</form>
+
+<!-- Sayfalama Butonları -->
+@if (Model.TotalPages > 1)
+{
+    <nav aria-label="Page navigation">
+        <ul class="pagination">
+            <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : null)">
+                <a class="page-link" href="?Page=@(Model.CurrentPage-1)@(Model.StatusFilter != null ? "&StatusFilter=" + Model.StatusFilter : "")@(Model.StartDateFilter != null ? "&StartDateFilter=" + Model.StartDateFilter?.ToString("yyyy-MM-dd") : "")@(Model.EndDateFilter != null ? "&EndDateFilter=" + Model.EndDateFilter?.ToString("yyyy-MM-dd") : "")">Previous</a>
+            </li>
+            @for (int i = 1; i <= Model.TotalPages; i++)
+            {
+                <li class="page-item @(Model.CurrentPage == i ? "active" : null)">
+                    <a class="page-link" href="?Page=@i@(Model.StatusFilter != null ? "&StatusFilter=" + Model.StatusFilter : "")@(Model.StartDateFilter != null ? "&StartDateFilter=" + Model.StartDateFilter?.ToString("yyyy-MM-dd") : "")@(Model.EndDateFilter != null ? "&EndDateFilter=" + Model.EndDateFilter?.ToString("yyyy-MM-dd") : "")">@i</a>
+                </li>
+            }
+            <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : null)">
+                <a class="page-link" href="?Page=@(Model.CurrentPage+1)@(Model.StatusFilter != null ? "&StatusFilter=" + Model.StatusFilter : "")@(Model.StartDateFilter != null ? "&StartDateFilter=" + Model.StartDateFilter?.ToString("yyyy-MM-dd") : "")@(Model.EndDateFilter != null ? "&EndDateFilter=" + Model.EndDateFilter?.ToString("yyyy-MM-dd") : "")">Next</a>
+            </li>
+        </ul>
+    </nav>
+}
+
+<!-- Var Olan Rezervasyonlar -->
+<h4 class="mt-4 mb-2"><i class="bi bi-list-check me-2"></i>Your Reservations</h4>
+<div class="table-responsive">
+<table class="table table-bordered table-hover align-middle text-center">
+    <thead class="table-light">
+        <tr>
+            <th>ID</th>
+            <th>Classroom</th>
+            <th>Term</th>
+            <th>Day</th>
+            <th>Start</th>
+            <th>End</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+    @foreach (var r in Model.MyReservations.OrderByDescending(x => x.StartDate).Take(10))
+    {
+        <tr>
+            <td>@r.Id</td>
+            <td>@(r.Classroom?.Name ?? "-")</td>
+            <td>@(r.Term?.Name ?? "-")</td>
+            <td>@((DayOfWeek)r.DayOfWeek)</td>
+            <td>@r.StartTime.ToString("HH:mm")</td>
+            <td>@r.EndTime.ToString("HH:mm")</td>
+            <td>
+                @if (r.Status == "Pending")
+                {
+                    <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>Pending</span>
+                }
+                else if (r.Status == "Approved")
+                {
+                    <span class="badge bg-success"><i class="bi bi-check-circle-fill me-1"></i>Approved</span>
+                }
+                else if (r.Status == "Rejected")
+                {
+                    <span class="badge bg-danger"><i class="bi bi-x-circle-fill me-1"></i>Rejected</span>
+                }
+                else
+                {
+                    <span class="badge bg-secondary">@r.Status</span>
+                }
+            </td>
+            <td>
+                <button type="button" class="btn btn-sm btn-outline-danger" data-cancel-reservation="@r.Id" @(r.Status != "Pending" ? "disabled" : null)><i class="bi bi-x-lg me-1"></i>Cancel</button>
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>
+@if (Model.MyReservations.Count > 10)
+{
+    <div class="text-muted small">Showing first 10 reservations.</div>
+}
+</div>
+
+<h4 class="mt-4 mb-2"><i class="bi bi-layers-fill me-2"></i>Reservation Groups (Batch)</h4>
+<div class="table-responsive">
+<table class="table table-bordered table-hover align-middle text-center">
+    <thead class="table-light">
+        <tr>
+            <th>Classroom</th>
+            <th>Term</th>
+            <th>Day</th>
+            <th>Start Date</th>
+            <th>End Date</th>
+            <th>Count</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+    @foreach (var g in Model.ReservationGroups)
+    {
+        <tr>
+            <td>@g.ClassroomName</td>
+            <td>@g.TermName</td>
+            <td>@((DayOfWeek)g.DayOfWeek)</td>
+            <td>@g.StartDate.ToShortDateString()</td>
+            <td>@g.EndDate.ToShortDateString()</td>
+            <td>@g.Count</td>
+            <td>
+                @if (g.Status == "Pending")
+                {
+                    <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>Pending</span>
+                }
+                else if (g.Status == "Approved")
+                {
+                    <span class="badge bg-success"><i class="bi bi-check-circle-fill me-1"></i>Approved</span>
+                }
+                else if (g.Status == "Rejected")
+                {
+                    <span class="badge bg-danger"><i class="bi bi-x-circle-fill me-1"></i>Rejected</span>
+                }
+                else
+                {
+                    <span class="badge bg-secondary">@g.Status</span>
+                }
+            </td>
+            <td>
+                <form method="post" asp-page-handler="CancelReservationGroup" asp-route-groupId="@g.GroupId" style="display:inline">
+                    <button type="submit" class="btn btn-sm btn-outline-danger" @(g.Status != "Pending" ? "disabled" : null)><i class="bi bi-x-octagon-fill me-1"></i>Cancel All</button>
+                </form>
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>
+</div>
+
+<!-- Modern Feedback Alanı Başlangıcı -->
+<h4 class="mt-4 mb-2"><i class="bi bi-chat-left-dots-fill me-2"></i>Leave Feedback for Your Classrooms</h4>
+<div class="row">
+@if (feedbackable.Count == 0)
+{
+    <div class="alert alert-info mt-3">Şu anda feedback bırakabileceğiniz bir sınıf veya dönem yok.</div>
+}
+else
+{
+    foreach (var item in feedbackable)
+    {
+        <div class="col-md-6 mb-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">@item.Classroom?.Name ?? "-"</h5>
+                    <h6 class="card-subtitle mb-2 text-muted">@item.Term?.Name (@item.Term?.StartDate.ToShortDateString() - @item.Term?.EndDate.ToShortDateString())</h6>
+                    @if (item.AlreadyLeft && item.Feedback != null)
+                    {
+                        <div class="mb-2">
+                            @for (int i = 1; i <= 5; i++)
+                            {
+                                if (i <= item.Feedback.Rating) { <span style="color:gold">★</span>; } else { <span style="color:#ccc">★</span>; }
+                            }
+                            <span class="ms-2">@item.Feedback.Comment</span>
+                            <button type="button" class="btn btn-sm btn-outline-primary ms-2" data-bs-toggle="modal" data-bs-target="#editFeedbackModal-@item.Feedback.Id">Edit</button>
+                        </div>
+                    }
+                    <!-- Edit Feedback Modal -->
+                    @if (item.AlreadyLeft && item.Feedback != null)
+                    {
+                        <div class="modal fade" id="editFeedbackModal-@item.Feedback.Id" tabindex="-1" aria-labelledby="editFeedbackModalLabel-@item.Feedback.Id" aria-hidden="true">
+                          <div class="modal-dialog">
+                            <div class="modal-content">
+                              <div class="modal-header">
+                                <h5 class="modal-title" id="editFeedbackModalLabel-@item.Feedback.Id">Edit Feedback</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                              </div>
+                              <form id="editFeedbackForm-@item.Feedback.Id" method="post" asp-page-handler="EditFeedback">
+                                <div class="modal-body">
+                                  <input type="hidden" name="FeedbackId" value="@item.Feedback.Id" />
+                                  <div class="mb-3">
+                                    <label class="form-label">Rating</label>
+                                    <select class="form-select" name="Rating" required>
+                                      @for (int i = 1; i <= 5; i++)
+                                      {
+                                          <option value="@i" selected="@(item.Feedback.Rating == i ? "selected" : null)">@i</option>
+                                      }
+                                    </select>
+                                  </div>
+                                  <div class="mb-3">
+                                    <label class="form-label">Comment</label>
+                                    <textarea class="form-control" name="Comment" rows="3" maxlength="300">@item.Feedback.Comment</textarea>
+                                  </div>
+                                </div>
+                                <div class="modal-footer">
+                                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                  <button type="button" class="btn btn-primary editFeedbackSubmitBtn" data-feedback-id="@item.Feedback.Id">Save</button>
+                                </div>
+                              </form>
+                            </div>
+                          </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#feedbackModal_@item.ClassroomId.ToString()_@item.TermId.ToString()">Leave Feedback</button>
+                        <!-- Modal -->
+                        <div class="modal fade" id="feedbackModal_@item.ClassroomId.ToString()_@item.TermId.ToString()" tabindex="-1" aria-labelledby="feedbackModalLabel_@item.ClassroomId.ToString()_@item.TermId.ToString()" aria-hidden="true">
+                          <div class="modal-dialog">
+                            <div class="modal-content">
+                              <div class="modal-header">
+                                <h5 class="modal-title" id="feedbackModalLabel_@item.ClassroomId.ToString()_@item.TermId.ToString()">Leave Feedback</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                              </div>
+                              <form id="addFeedbackForm-@item.ClassroomId-@item.TermId" method="post" data-feedback-ajax action="/InstructorPanel?handler=AddFeedback">
+                                @Html.AntiForgeryToken()
+                                <div class="modal-body">
+                                  <input type="hidden" name="FeedbackInput.ClassroomId" value="@item.ClassroomId.ToString()" />
+                                  <input type="hidden" name="FeedbackInput.TermId" value="@item.TermId.ToString()" />
+                                  <div class="mb-3">
+                                    <label class="form-label">Rating</label>
+                                    <select class="form-select" name="FeedbackInput.Rating" required>
+                                        <option value="">Select...</option>
+                                        <option value="1">★☆☆☆☆</option>
+                                        <option value="2">★★☆☆☆</option>
+                                        <option value="3">★★★☆☆</option>
+                                        <option value="4">★★★★☆</option>
+                                        <option value="5">★★★★★</option>
+                                    </select>
+                                  </div>
+                                  <div class="mb-3">
+                                    <label class="form-label">Comment</label>
+                                    <input type="text" class="form-control" name="FeedbackInput.Comment" maxlength="200" placeholder="Your comment..." required />
+                                  </div>
+                                </div>
+                                <div class="modal-footer">
+                                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                  <button type="button" class="btn btn-success addFeedbackSubmitBtn" data-classroom-id="@item.ClassroomId" data-term-id="@item.TermId">Submit Feedback</button>
+                                </div>
+                              </form>
+                            </div>
+                          </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+}
+</div>
+<!-- Modern Feedback Alanı Sonu -->
+
+<!-- DEBUG: Kullanıcının onaylı rezervasyonları ve seçili classroom/term -->
+<div class="mt-3">
+    <details>
+        <summary class="small">Debug: MyReservations & Seçili Classroom/Term</summary>
+        <div class="small">
+            <b>Seçili ClassroomId:</b> @Model.FeedbackInput.ClassroomId <br />
+            <b>Seçili TermId:</b> @Model.FeedbackInput.TermId <br />
+            <b>MyReservations (Approved):</b>
+            <table class="table table-sm table-bordered">
+                <thead><tr><th>ID</th><th>ClassroomId</th><th>TermId</th><th>Status</th></tr></thead>
+                <tbody>
+                @foreach (var r in Model.MyReservations.Where(x => x.Status == "Approved"))
+                {
+                    <tr>
+                        <td>@r.ClassroomId</td>
+                        <td>@r.TermId</td>
+                        <td>@r.Status</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </details>
+</div>
+
+<!-- Rezervasyon İptal Modalı -->
+<div class="modal fade" id="cancelReservationModal" tabindex="-1" aria-labelledby="cancelReservationModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="cancelReservationModalLabel">Cancel Reservation</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="reservationCancelForm" method="post" asp-page-handler="CancelReservation" onsubmit="return false;">
+        @Html.AntiForgeryToken()
+        <div class="modal-body">
+          <input type="hidden" name="reservationId" value="" />
+          <p>Are you sure you want to cancel this reservation?</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
+          <button type="button" class="btn btn-danger" id="cancelReservationSubmitBtn">Yes, Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/feedback.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var calendarEl = document.getElementById('calendar');
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'timeGridWeek',
+                themeSystem: 'saga',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                },
+                height: 600,
+                slotMinTime: '08:00:00',
+                slotMaxTime: '22:00:00',
+                allDaySlot: false,
+                events: @Html.Raw(calendarEventsJson),
+                eventDisplay: 'block',
+                eventDidMount: function(info) {
+                    // Tooltip ekle
+                    var status = info.event.title.match(/\(([^)]+)\)/);
+                    var tooltip = '';
+                    if (status) {
+                        if (info.event.backgroundColor === '#dc3545') tooltip = 'Conflict';
+                        else if (info.event.backgroundColor === '#adb5bd') tooltip = 'Holiday';
+                        else tooltip = status[1];
+                    }
+                    if (tooltip) {
+                        var el = info.el;
+                        el.setAttribute('title', tooltip);
+                        // Bootstrap tooltip desteği
+                        if (window.bootstrap) {
+                            new bootstrap.Tooltip(el);
+                        }
+                    }
+                }
+            });
+            calendar.render();
+
+            // Toast notification otomatik göster
+            var toastEl = document.getElementById('resultToast');
+            if (toastEl) {
+                var toast = new bootstrap.Toast(toastEl, { delay: 7000 });
+                toast.show();
+            }
+
+            // Rezervasyon iptal modalı için id aktarımı
+            document.querySelectorAll('[data-cancel-reservation]').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const reservationId = this.getAttribute('data-cancel-reservation');
+                    var input = document.querySelector('#reservationCancelForm input[name="reservationId"]');
+                    if (input) {
+                        input.value = reservationId;
+                    }
+                    var modalEl = document.getElementById('cancelReservationModal');
+                    if (modalEl) {
+                        var modal = new bootstrap.Modal(modalEl);
+                        modal.show();
+                    }
+                });
+            });
+
+            // Modal cancel formunun submitini garanti altına al
+            document.getElementById('reservationCancelForm').addEventListener('submit', function(e) {
+                // event.preventDefault() YOK! Form klasik şekilde submit edilecek.
+            });
+        });
+
+        // AJAX Reservation Add
+        $(document).on('click', '#addReservationSubmitBtn', function (e) {
+            e.preventDefault();
+            var $form = $('#addReservationForm');
+            var data = $form.serialize();
+            $.post('?handler=OnPostAsync', data, function (result) {
+                location.reload();
+            }).fail(function (xhr) {
+                alert('Error: ' + xhr.responseText);
+            });
+        });
+
+        // AJAX Reservation Cancel
+        $(document).on('click', '#cancelReservationSubmitBtn', function (e) {
+            e.preventDefault();
+            var $form = $('#reservationCancelForm');
+            var data = $form.serialize();
+            $.post('?handler=CancelReservation', data, function (result) {
+                $('#cancelReservationModal').modal('hide');
+                location.reload();
+            }).fail(function (xhr) {
+                alert('Error: ' + xhr.responseText);
+            });
+        });
+
+        // AJAX Feedback Edit
+        $(document).on('click', '.editFeedbackSubmitBtn', function (e) {
+            e.preventDefault();
+            var feedbackId = $(this).data('feedback-id');
+            var $form = $('#editFeedbackForm-' + feedbackId);
+            var data = $form.serialize();
+            $.post('?handler=EditFeedback', data, function (result) {
+                $('#editFeedbackModal-' + feedbackId).modal('hide');
+                location.reload();
+            }).fail(function (xhr) {
+                alert('Error: ' + xhr.responseText);
+            });
+        });
+
+        // AJAX Feedback Add
+        $(document).on('click', '.addFeedbackSubmitBtn', function (e) {
+            e.preventDefault();
+            var classroomId = $(this).data('classroom-id');
+            var termId = $(this).data('term-id');
+            var $form = $('#addFeedbackForm-' + classroomId + '-' + termId);
+            var data = $form.serialize();
+            $.post('?handler=AddFeedback', data, function (result) {
+                $('#feedbackModal_' + classroomId + '_' + termId).modal('hide');
+                location.reload();
+            }).fail(function (xhr) {
+                alert('Error: ' + xhr.responseText);
+            });
+        });
+    </script>
+} 

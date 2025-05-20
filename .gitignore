@@ -1,0 +1,46 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Visual Studio
+.vs/
+.vscode/
+*.code-workspace
+
+# ASP.NET
+wwwroot/logs/
+appsettings.Development.json
+appsettings.Local.json
+appsettings.*.local.json
+
+# User secrets
+secrets.json
+
+# Logs
+*.log
+
+# Test results
+TestResults/
+*.trx
+
+# Others
+*.DS_Store
+Thumbs.db
+
+# Rider
+.idea/
+*.sln.iml
+
+# Backup files
+*~
+*.bak
+
+# Npm
+node_modules/
+
+# Paket
+paket-files/ 

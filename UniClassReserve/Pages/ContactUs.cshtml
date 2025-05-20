@@ -1,0 +1,21 @@
+@page
+@model UniClassReserve.Pages.ContactUsModel
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Instructor")]
+
+<h2 class="mb-4"><i class="bi bi-envelope-fill me-2"></i>Contact Us</h2>
+@if (!string.IsNullOrEmpty(Model.ResultMessage))
+{
+    <div class="alert alert-info d-flex align-items-center"><i class="bi bi-info-circle-fill me-2"></i>@Model.ResultMessage</div>
+}
+<form method="post">
+    <div class="mb-3">
+        <label class="form-label">Subject</label>
+        <input type="text" class="form-control" name="Subject" required maxlength="100" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Message</label>
+        <textarea class="form-control" name="Message" rows="5" required maxlength="1000"></textarea>
+    </div>
+    <button type="submit" class="btn btn-primary"><i class="bi bi-send-fill me-1"></i>Send</button>
+</form> 

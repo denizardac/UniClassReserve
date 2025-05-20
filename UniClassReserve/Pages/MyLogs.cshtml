@@ -1,0 +1,54 @@
+@page
+@model UniClassReserve.Pages.MyLogsModel
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Instructor")]
+
+<h2 class="mb-4"><i class="bi bi-clipboard-data me-2"></i>My Logs</h2>
+@if (Model.Logs != null && Model.Logs.Count > 0)
+{
+    <div class="table-responsive">
+    <table class="table table-bordered table-hover align-middle text-center" style="font-size:1.05em;">
+        <thead class="table-light">
+            <tr>
+                <th>Date</th>
+                <th>Level</th>
+                <th>Operation</th>
+                <th>Details</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var log in Model.Logs)
+        {
+            var badgeClass = log.LogLevel == "Error" ? "bg-danger" : log.LogLevel == "Warning" ? "bg-warning text-dark" : "bg-info";
+            var icon = log.LogLevel == "Error" ? "bi bi-x-octagon-fill" : log.LogLevel == "Warning" ? "bi bi-exclamation-triangle-fill" : "bi bi-info-circle-fill";
+            <tr class="@((log.LogLevel == "Error") ? "table-danger" : (log.LogLevel == "Warning") ? "table-warning" : "")" style="vertical-align:middle;">
+                <td>@log.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                <td><span class="badge @badgeClass px-3 py-2"><i class="@icon me-1"></i>@log.LogLevel</span></td>
+                <td><span class="fw-bold">@log.Operation</span></td>
+                <td style="max-width:300px; white-space:pre-line; overflow:hidden; text-overflow:ellipsis; font-size:0.97em;">
+                    <span title="@Html.Raw(log.Details?.Replace("<br>", "\n"))" data-bs-toggle="tooltip" data-bs-html="true">
+                        @Html.Raw(log.Details != null && log.Details.Length > 100 ? log.Details.Substring(0, 100) + "..." : log.Details)
+                    </span>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+    </div>
+}
+else
+{
+    <div class="alert alert-info d-flex align-items-center"><i class="bi bi-info-circle-fill me-2"></i>No logs found.</div>
+}
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.forEach(function (tooltipTriggerEl) {
+                new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        });
+    </script>
+} 
